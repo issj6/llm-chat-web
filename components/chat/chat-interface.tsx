@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Thread } from "@/components/assistant-ui/thread";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,9 +20,10 @@ interface PublicModel {
 
 function ChatRuntimeWrapper({ modelId }: { modelId: string }) {
   const chat = useChat({
-    // @ts-ignore
-    api: '/api/chat',
-    body: { modelId },
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { modelId },
+    }),
   });
 
   const runtime = useAISDKRuntime(chat);
