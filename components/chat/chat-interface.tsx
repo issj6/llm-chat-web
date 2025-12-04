@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Thread } from "@/components/assistant-ui/thread";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -8,9 +8,12 @@ import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
+import { ChatSidebar } from "@/components/chat/chat-sidebar";
+import { useChatHistory } from "@/hooks/use-chat-history";
+import { cn } from "@/lib/utils";
 
 interface PublicModel {
   id: string;
@@ -18,21 +21,43 @@ interface PublicModel {
   provider: string;
 }
 
-function ChatRuntimeWrapper({ modelId }: { modelId: string }) {
+function ChatRuntimeWrapper({ 
+  modelId, 
+  sessionId,
+  onFirstMessage,
+}: { 
+  modelId: string;
+  sessionId: string | null;
+  onFirstMessage?: (message: string) => void;
+}) {
   const chat = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: { modelId },
     }),
+    onFinish: (message) => {
+      // 当第一条消息完成时，自动生成标题
+      if (chat.messages.length === 2 && onFirstMessage) {
+        const firstUserMessage = chat.messages.find(m => m.role === 'user');
+        if (firstUserMessage) {
+          // 从 parts 中提取文本内容
+          const textContent = firstUserMessage.parts
+            ?.filter((p: any) => p.type === 'text')
+            .map((p: any) => p.text)
+            .join('') || '';
+          if (textContent) {
+            onFirstMessage(textContent);
+          }
+        }
+      }
+    },
   });
 
   const runtime = useAISDKRuntime(chat);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <Thread 
-        welcomeMessage="你好！我是 AI 助手，有什么我可以帮你的吗？"
-      />
+      <Thread />
     </AssistantRuntimeProvider>
   );
 }
@@ -41,14 +66,26 @@ export function ChatInterface() {
   const [models, setModels] = useState<PublicModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const {
+    sessions,
+    currentSessionId,
+    isLoaded,
+    createSession,
+    switchSession,
+    updateSessionTitle,
+    deleteSession,
+    autoGenerateTitle,
+  } = useChatHistory();
+
+  // 加载模型列表
   useEffect(() => {
     fetch('/api/models')
       .then(res => res.json())
       .then((data: PublicModel[]) => {
         setModels(data);
         if (data.length > 0) {
-          // 尝试从 localStorage 恢复上次选择的模型，或者默认选第一个
           const savedModel = localStorage.getItem('last_model_id');
           if (savedModel && data.find(m => m.id === savedModel)) {
             setSelectedModelId(savedModel);
@@ -60,12 +97,31 @@ export function ChatInterface() {
       .finally(() => setLoading(false));
   }, []);
 
+  // 当历史记录加载完成且没有当前会话时，创建新会话
+  useEffect(() => {
+    if (isLoaded && !currentSessionId && selectedModelId && sessions.length === 0) {
+      createSession(selectedModelId);
+    }
+  }, [isLoaded, currentSessionId, selectedModelId, sessions.length, createSession]);
+
   const handleModelChange = (val: string) => {
     setSelectedModelId(val);
     localStorage.setItem('last_model_id', val);
   };
 
-  if (loading) {
+  const handleNewChat = useCallback(() => {
+    if (selectedModelId) {
+      createSession(selectedModelId);
+    }
+  }, [selectedModelId, createSession]);
+
+  const handleFirstMessage = useCallback((message: string) => {
+    if (currentSessionId) {
+      autoGenerateTitle(currentSessionId, message);
+    }
+  }, [currentSessionId, autoGenerateTitle]);
+
+  if (loading || !isLoaded) {
     return <div className="flex h-screen items-center justify-center text-muted-foreground">加载配置中...</div>;
   }
 
@@ -88,33 +144,69 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between px-4 h-14 border-b bg-muted/20 shrink-0 z-10">
-        <div className="font-semibold">AI Chat</div>
-        <div className="flex items-center gap-3">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/login">管理员面板</Link>
-          </Button>
-          <div className="w-[200px]">
-            <Select value={selectedModelId} onValueChange={handleModelChange}>
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="选择模型" />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </header>
-      <div className="flex-1 overflow-hidden relative">
-        {selectedModelId && (
-          <ChatRuntimeWrapper key={selectedModelId} modelId={selectedModelId} />
+    <div className="flex h-screen bg-background">
+      {/* 侧边栏 */}
+      <ChatSidebar
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onNewChat={handleNewChat}
+        onSelectSession={switchSession}
+        onDeleteSession={deleteSession}
+        onRenameSession={updateSessionTitle}
+      />
+
+      {/* 主内容区 */}
+      <div 
+        className={cn(
+          "flex-1 flex flex-col transition-all duration-300",
+          sidebarOpen ? "ml-64" : "ml-0"
         )}
+      >
+        <header className="flex items-center justify-between px-4 h-14 border-b bg-muted/20 shrink-0 z-10">
+          <div className={cn("font-semibold", !sidebarOpen && "ml-12")}>
+            AI Chat
+          </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleNewChat}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              新对话
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/login">管理面板</Link>
+            </Button>
+            <div className="w-[200px]">
+              <Select value={selectedModelId} onValueChange={handleModelChange}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="选择模型" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 overflow-hidden relative">
+          {selectedModelId && currentSessionId && (
+            <ChatRuntimeWrapper 
+              key={currentSessionId} 
+              modelId={selectedModelId}
+              sessionId={currentSessionId}
+              onFirstMessage={handleFirstMessage}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
