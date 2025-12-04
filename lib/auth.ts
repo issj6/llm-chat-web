@@ -28,18 +28,10 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
  * 验证全局访问密码
  */
 export async function verifyGlobalPassword(password: string): Promise<boolean> {
-  const storedPassword = await storage.get<string>('sys:global_password');
-  
-  console.log('--- DEBUG: Global Login Verify ---');
-  console.log('Input:', `"${password}"`);
-  console.log('Stored:', `"${storedPassword}"`);
-  console.log('Type of Stored:', typeof storedPassword);
-  console.log('Match:', password === storedPassword);
-  console.log('----------------------------------');
-
+  const storedPassword = await storage.get<string | number>('sys:global_password');
   if (!storedPassword) return false;
-  // 全局密码简单比对即可，也可以升级为 hash
-  return password === storedPassword;
+  // 确保存储的值转为字符串后再比对（兼容 KV 将纯数字存为 number 的情况）
+  return password === String(storedPassword);
 }
 
 /**
