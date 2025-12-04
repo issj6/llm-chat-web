@@ -192,6 +192,19 @@ ReasoningText.displayName = "ReasoningText";
  */
 const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />;
 
+// 需要过滤的占位符文本模式
+const PLACEHOLDER_PATTERNS = [
+  /^\[REDACTED\]$/i,
+  /^\[redacted\]$/i,
+  /^$/,
+];
+
+const isPlaceholderContent = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return true;
+  return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(trimmed));
+};
+
 /**
  * Collapsible wrapper that groups consecutive reasoning parts together.
  * Includes scroll lock to prevent page jumps during collapse animation.
@@ -220,14 +233,32 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
     for (let i = startIndex; i <= endIndex && i < message.parts.length; i++) {
       const part = message.parts[i];
       if (part?.type === "reasoning") {
-        // 检查 reasoning 部分是否有实际内容
-        const reasoningPart = part as { type: "reasoning"; text?: string; data?: unknown[] };
-        if (reasoningPart.text && reasoningPart.text.trim().length > 0) {
+        // 检查各种可能的内容字段
+        const reasoningPart = part as Record<string, unknown>;
+        
+        // 检查 text 字段
+        if (typeof reasoningPart.text === 'string' && !isPlaceholderContent(reasoningPart.text)) {
           return true;
         }
-        // 检查 data 数组是否有内容
-        if (reasoningPart.data && Array.isArray(reasoningPart.data) && reasoningPart.data.length > 0) {
+        
+        // 检查 content 字段
+        if (typeof reasoningPart.content === 'string' && !isPlaceholderContent(reasoningPart.content)) {
           return true;
+        }
+        
+        // 检查 data 数组
+        if (Array.isArray(reasoningPart.data) && reasoningPart.data.length > 0) {
+          // 检查 data 中是否有实际内容
+          const hasDataContent = reasoningPart.data.some((item: unknown) => {
+            if (typeof item === 'string') return !isPlaceholderContent(item);
+            if (typeof item === 'object' && item !== null) {
+              const obj = item as Record<string, unknown>;
+              if (typeof obj.text === 'string') return !isPlaceholderContent(obj.text);
+              if (typeof obj.content === 'string') return !isPlaceholderContent(obj.content);
+            }
+            return false;
+          });
+          if (hasDataContent) return true;
         }
       }
     }
