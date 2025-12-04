@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { Reasoning, ReasoningGroup } from "@/components/assistant-ui/reasoning";
 import {
   ComposerAddAttachment,
   ComposerAttachments,
@@ -232,6 +233,8 @@ const AssistantMessage: FC = () => {
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,
+            Reasoning: Reasoning,
+            ReasoningGroup: ReasoningGroup,
             tools: { Fallback: ToolFallback },
           }}
         />
