@@ -58,7 +58,8 @@ function ChatRuntimeWrapper({
   onFirstMessage?: (message: string) => void;
 }) {
   const hasCalledFirstMessage = useRef(false);
-  const prevMessagesLengthRef = useRef(initialMessages.length);
+  const lastSavedLengthRef = useRef(initialMessages.length);
+  const messagesRef = useRef(initialMessages);
   
   const chat = useChat({
     id: sessionId,
@@ -67,20 +68,17 @@ function ChatRuntimeWrapper({
       api: '/api/chat',
       body: { modelId },
     }),
-  });
-
-  // 当消息变化时保存
-  useEffect(() => {
-    const currentLength = chat.messages.length;
-    
-    // 只在消息数量增加时保存（避免初始化时的重复保存）
-    if (currentLength > 0 && currentLength !== prevMessagesLengthRef.current) {
-      saveMessages(sessionId, chat.messages);
-      prevMessagesLengthRef.current = currentLength;
+    onFinish: ({ message, messages: finishedMessages }) => {
+      // 当 AI 回复完成时保存消息
+      // 使用 onFinish 回调中的 messages 参数，确保获取最新的消息
+      const currentMessages = finishedMessages || messagesRef.current;
+      console.log('[Chat] onFinish called, saving', currentMessages.length, 'messages...');
+      saveMessages(sessionId, currentMessages);
+      lastSavedLengthRef.current = currentMessages.length;
       
-      // 当第一条对话完成时（用户消息 + AI回复），自动生成标题
-      if (currentLength >= 2 && onFirstMessage && !hasCalledFirstMessage.current) {
-        const firstUserMessage = chat.messages.find(m => m.role === 'user');
+      // 当第一条对话完成时，自动生成标题
+      if (currentMessages.length >= 2 && onFirstMessage && !hasCalledFirstMessage.current) {
+        const firstUserMessage = currentMessages.find(m => m.role === 'user');
         if (firstUserMessage) {
           hasCalledFirstMessage.current = true;
           const textContent = firstUserMessage.parts
@@ -92,8 +90,47 @@ function ChatRuntimeWrapper({
           }
         }
       }
+    },
+  });
+
+  // 保持 messagesRef 同步
+  useEffect(() => {
+    messagesRef.current = chat.messages;
+  }, [chat.messages]);
+
+  // 保存消息的统一逻辑
+  const prevStatusRef = useRef(chat.status);
+  
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = chat.status;
+    
+    // 当状态从 streaming 变为 ready 时，保存消息（AI 回复完成）
+    if (prevStatus === 'streaming' && chat.status === 'ready' && chat.messages.length > 0) {
+      console.log('[Chat] Streaming finished, saving', chat.messages.length, 'messages...');
+      saveMessages(sessionId, chat.messages);
+      lastSavedLengthRef.current = chat.messages.length;
     }
-  }, [chat.messages, sessionId, onFirstMessage]);
+    
+    // 当状态从 submitted 变为 streaming 时，保存用户消息
+    if (prevStatus === 'submitted' && chat.status === 'streaming') {
+      const userMessages = chat.messages.filter(m => m.role === 'user');
+      if (userMessages.length > 0) {
+        console.log('[Chat] User message submitted, saving...');
+        saveMessages(sessionId, chat.messages);
+      }
+    }
+  }, [chat.status, chat.messages, sessionId]);
+
+  // 额外的保存：当消息数量变化且状态为 ready 时
+  useEffect(() => {
+    if (chat.status === 'ready' && chat.messages.length > 0 && 
+        chat.messages.length !== lastSavedLengthRef.current) {
+      console.log('[Chat] Messages changed while ready, saving...');
+      saveMessages(sessionId, chat.messages);
+      lastSavedLengthRef.current = chat.messages.length;
+    }
+  }, [chat.messages.length, chat.status, sessionId]);
 
   const runtime = useAISDKRuntime(chat);
 
