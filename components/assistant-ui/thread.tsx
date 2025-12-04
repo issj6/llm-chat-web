@@ -46,7 +46,7 @@ export const Thread: FC<ComponentProps<typeof ThreadPrimitive.Root> & { welcomeM
       {...props}
     >
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
+        autoScroll
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
       >
         <ThreadPrimitive.Empty>
