@@ -212,6 +212,7 @@ export function ModelsTab() {
                     <SelectItem value="openai">OpenAI</SelectItem>
                     <SelectItem value="anthropic">Anthropic</SelectItem>
                     <SelectItem value="google">Google</SelectItem>
+                    <SelectItem value="openrouter">OpenRouter</SelectItem>
                     <SelectItem value="custom">Custom (OpenAI Compatible)</SelectItem>
                   </SelectContent>
                 </Select>

@@ -2,8 +2,10 @@ import { streamText, convertToModelMessages } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { storage } from '@/lib/kv';
-import { ModelConfig } from '@/components/admin/models-tab'; // 复用类型定义，虽然通常应该单独定义
+import { ModelConfig } from '@/components/admin/models-tab';
 
 // 设置最大执行时间，防止超时
 export const maxDuration = 60;
@@ -15,12 +17,10 @@ export async function POST(req: Request) {
     // 1. 获取模型配置
     const models = await storage.get<ModelConfig[]>('config:models') || [];
     
-    console.log('--- DEBUG: Chat API (Retry) ---');
+    console.log('--- DEBUG: Chat API ---');
     console.log('Payload modelId:', modelId);
-    console.log('KV Models count:', models.length);
-    console.log('KV Model IDs:', models.map(m => m.id));
-    console.log('Match found:', models.some(m => m.id === modelId));
-    console.log('-------------------------------');
+    console.log('Provider:', models.find(m => m.id === modelId)?.provider);
+    console.log('-----------------------');
 
     const config = models.find(m => m.id === modelId);
 
@@ -33,12 +33,33 @@ export async function POST(req: Request) {
     
     switch (config.provider) {
       case 'openai':
-      case 'custom': // Custom 通常兼容 OpenAI
+        // 官方 OpenAI API
         const openai = createOpenAI({
           apiKey: config.apiKey,
           baseURL: config.baseUrl || undefined,
         });
         model = openai(config.id);
+        break;
+      
+      case 'openrouter':
+        // OpenRouter - 使用专用 provider
+        const openrouter = createOpenRouter({
+          apiKey: config.apiKey,
+        });
+        model = openrouter.chat(config.id);
+        break;
+
+      case 'custom':
+        // 自定义 OpenAI 兼容 API（如 302.ai、OneAPI、New API 等）
+        if (!config.baseUrl) {
+          return new Response('Custom provider requires Base URL', { status: 400 });
+        }
+        const customProvider = createOpenAICompatible({
+          name: 'custom',
+          apiKey: config.apiKey,
+          baseURL: config.baseUrl,
+        });
+        model = customProvider(config.id);
         break;
         
       case 'anthropic':
