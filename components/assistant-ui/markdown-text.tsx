@@ -96,13 +96,16 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="aui-code-header-root mt-4 flex items-center justify-between gap-4 rounded-t-lg bg-muted-foreground/15 px-4 py-2 font-semibold text-foreground text-sm dark:bg-muted-foreground/20">
+    <div 
+      className="aui-code-header-root mt-4 flex items-center justify-between gap-4 rounded-t-lg px-4 py-2 font-semibold text-sm"
+      style={{ backgroundColor: '#21252b', color: '#abb2bf' }}
+    >
       <span className="aui-code-header-language lowercase [&>span]:text-xs">
         {language}
       </span>
-      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
-        {!isCopied && <CopyIcon />}
-        {isCopied && <CheckIcon />}
+      <TooltipIconButton tooltip="Copy" onClick={onCopy} className="text-gray-400 hover:text-white">
+        {!isCopied && <CopyIcon className="h-4 w-4" />}
+        {isCopied && <CheckIcon className="h-4 w-4" />}
       </TooltipIconButton>
     </div>
   );
@@ -267,9 +270,10 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "aui-md-pre overflow-x-auto rounded-t-none! rounded-b-lg bg-black p-4 text-white",
+        "aui-md-pre overflow-x-auto rounded-b-lg p-4",
         className,
       )}
+      style={{ backgroundColor: '#282c34', color: '#abb2bf' }}
       {...props}
     />
   ),

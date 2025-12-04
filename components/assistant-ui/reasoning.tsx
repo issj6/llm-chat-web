@@ -213,6 +213,32 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
     return lastIndex >= startIndex && lastIndex <= endIndex;
   });
 
+  /**
+   * Check if reasoning content is empty - hide the component if so
+   */
+  const hasContent = useAssistantState(({ message }) => {
+    for (let i = startIndex; i <= endIndex && i < message.parts.length; i++) {
+      const part = message.parts[i];
+      if (part?.type === "reasoning") {
+        // 检查 reasoning 部分是否有实际内容
+        const reasoningPart = part as { type: "reasoning"; text?: string; data?: unknown[] };
+        if (reasoningPart.text && reasoningPart.text.trim().length > 0) {
+          return true;
+        }
+        // 检查 data 数组是否有内容
+        if (reasoningPart.data && Array.isArray(reasoningPart.data) && reasoningPart.data.length > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+
+  // 如果没有内容且不在流式传输中，不渲染组件
+  if (!hasContent && !isReasoningStreaming) {
+    return null;
+  }
+
   return (
     <ReasoningRoot>
       <ReasoningTrigger active={isReasoningStreaming} />

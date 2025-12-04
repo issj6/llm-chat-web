@@ -148,3 +148,71 @@
 .animate-collapsible-up {
   animation: collapsible-up var(--animation-duration, 200ms) ease-out;
 }
+
+/* 代码块样式 - 确保暗色背景和正确的语法高亮 */
+.aui-md-pre {
+  background-color: #282c34 !important;
+  color: #abb2bf !important;
+}
+
+.aui-md-pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* Prism One Dark 主题颜色覆盖 */
+.aui-md-pre .token.comment,
+.aui-md-pre .token.prolog,
+.aui-md-pre .token.doctype,
+.aui-md-pre .token.cdata {
+  color: #5c6370 !important;
+}
+
+.aui-md-pre .token.punctuation {
+  color: #abb2bf !important;
+}
+
+.aui-md-pre .token.property,
+.aui-md-pre .token.tag,
+.aui-md-pre .token.boolean,
+.aui-md-pre .token.number,
+.aui-md-pre .token.constant,
+.aui-md-pre .token.symbol,
+.aui-md-pre .token.deleted {
+  color: #e06c75 !important;
+}
+
+.aui-md-pre .token.selector,
+.aui-md-pre .token.attr-name,
+.aui-md-pre .token.string,
+.aui-md-pre .token.char,
+.aui-md-pre .token.builtin,
+.aui-md-pre .token.inserted {
+  color: #98c379 !important;
+}
+
+.aui-md-pre .token.operator,
+.aui-md-pre .token.entity,
+.aui-md-pre .token.url,
+.aui-md-pre .language-css .token.string,
+.aui-md-pre .style .token.string {
+  color: #56b6c2 !important;
+}
+
+.aui-md-pre .token.atrule,
+.aui-md-pre .token.attr-value,
+.aui-md-pre .token.keyword {
+  color: #c678dd !important;
+}
+
+.aui-md-pre .token.function,
+.aui-md-pre .token.class-name {
+  color: #61afef !important;
+}
+
+.aui-md-pre .token.regex,
+.aui-md-pre .token.important,
+.aui-md-pre .token.variable {
+  color: #c678dd !important;
+}
+

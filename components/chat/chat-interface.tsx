@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Thread } from "@/components/assistant-ui/thread";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -27,7 +27,9 @@ function loadMessages(sessionId: string): UIMessage[] {
   const stored = localStorage.getItem(`chat_messages_${sessionId}`);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      console.log(`[Chat] Loaded ${parsed.length} messages for session ${sessionId}`);
+      return parsed;
     } catch (e) {
       console.error("Failed to parse messages:", e);
     }
@@ -38,21 +40,25 @@ function loadMessages(sessionId: string): UIMessage[] {
 // 保存消息到 localStorage
 function saveMessages(sessionId: string, messages: UIMessage[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(messages));
+  if (messages.length > 0) {
+    console.log(`[Chat] Saving ${messages.length} messages for session ${sessionId}`);
+    localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(messages));
+  }
 }
 
 function ChatRuntimeWrapper({ 
   modelId, 
   sessionId,
+  initialMessages,
   onFirstMessage,
 }: { 
   modelId: string;
   sessionId: string;
+  initialMessages: UIMessage[];
   onFirstMessage?: (message: string) => void;
 }) {
-  // 加载初始消息
-  const initialMessages = loadMessages(sessionId);
   const hasCalledFirstMessage = useRef(false);
+  const prevMessagesLengthRef = useRef(initialMessages.length);
   
   const chat = useChat({
     id: sessionId,
@@ -61,16 +67,22 @@ function ChatRuntimeWrapper({
       api: '/api/chat',
       body: { modelId },
     }),
-    onFinish: () => {
-      // 保存消息到 localStorage
+  });
+
+  // 当消息变化时保存
+  useEffect(() => {
+    const currentLength = chat.messages.length;
+    
+    // 只在消息数量增加时保存（避免初始化时的重复保存）
+    if (currentLength > 0 && currentLength !== prevMessagesLengthRef.current) {
       saveMessages(sessionId, chat.messages);
+      prevMessagesLengthRef.current = currentLength;
       
-      // 当第一条消息完成时，自动生成标题
-      if (chat.messages.length === 2 && onFirstMessage && !hasCalledFirstMessage.current) {
-        hasCalledFirstMessage.current = true;
+      // 当第一条对话完成时（用户消息 + AI回复），自动生成标题
+      if (currentLength >= 2 && onFirstMessage && !hasCalledFirstMessage.current) {
         const firstUserMessage = chat.messages.find(m => m.role === 'user');
         if (firstUserMessage) {
-          // 从 parts 中提取文本内容
+          hasCalledFirstMessage.current = true;
           const textContent = firstUserMessage.parts
             ?.filter((p: any) => p.type === 'text')
             .map((p: any) => p.text)
@@ -80,15 +92,8 @@ function ChatRuntimeWrapper({
           }
         }
       }
-    },
-  });
-
-  // 当消息变化时保存（包括用户发送的消息）
-  useEffect(() => {
-    if (chat.messages.length > 0) {
-      saveMessages(sessionId, chat.messages);
     }
-  }, [chat.messages, sessionId]);
+  }, [chat.messages, sessionId, onFirstMessage]);
 
   const runtime = useAISDKRuntime(chat);
 
@@ -240,6 +245,7 @@ export function ChatInterface() {
               key={currentSessionId} 
               modelId={selectedModelId}
               sessionId={currentSessionId}
+              initialMessages={loadMessages(currentSessionId)}
               onFirstMessage={handleFirstMessage}
             />
           )}
