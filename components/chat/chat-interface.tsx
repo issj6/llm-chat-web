@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Thread } from "@/components/assistant-ui/thread";
-import { useChat } from "@ai-sdk/react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
@@ -21,23 +21,53 @@ interface PublicModel {
   provider: string;
 }
 
+// 从 localStorage 加载消息
+function loadMessages(sessionId: string): UIMessage[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem(`chat_messages_${sessionId}`);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse messages:", e);
+    }
+  }
+  return [];
+}
+
+// 保存消息到 localStorage
+function saveMessages(sessionId: string, messages: UIMessage[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(messages));
+}
+
 function ChatRuntimeWrapper({ 
   modelId, 
   sessionId,
   onFirstMessage,
 }: { 
   modelId: string;
-  sessionId: string | null;
+  sessionId: string;
   onFirstMessage?: (message: string) => void;
 }) {
+  // 加载初始消息
+  const initialMessages = loadMessages(sessionId);
+  const hasCalledFirstMessage = useRef(false);
+  
   const chat = useChat({
+    id: sessionId,
+    messages: initialMessages,
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: { modelId },
     }),
-    onFinish: (message) => {
+    onFinish: () => {
+      // 保存消息到 localStorage
+      saveMessages(sessionId, chat.messages);
+      
       // 当第一条消息完成时，自动生成标题
-      if (chat.messages.length === 2 && onFirstMessage) {
+      if (chat.messages.length === 2 && onFirstMessage && !hasCalledFirstMessage.current) {
+        hasCalledFirstMessage.current = true;
         const firstUserMessage = chat.messages.find(m => m.role === 'user');
         if (firstUserMessage) {
           // 从 parts 中提取文本内容
@@ -52,6 +82,13 @@ function ChatRuntimeWrapper({
       }
     },
   });
+
+  // 当消息变化时保存（包括用户发送的消息）
+  useEffect(() => {
+    if (chat.messages.length > 0) {
+      saveMessages(sessionId, chat.messages);
+    }
+  }, [chat.messages, sessionId]);
 
   const runtime = useAISDKRuntime(chat);
 

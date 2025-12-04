@@ -35,21 +35,26 @@ const MarkdownTextImpl = () => {
       rehypePlugins={[rehypeKatex]}
       className="aui-md"
       components={defaultComponents}
+      componentsByLanguage={{
+        mermaid: {
+          SyntaxHighlighter: MermaidDiagram,
+        },
+      }}
     />
   );
 };
 
 export const MarkdownText = memo(MarkdownTextImpl);
 
-// Mermaid 图表组件
-const MermaidDiagram: FC<{ code: string }> = ({ code }) => {
+// Mermaid 图表组件 - 作为 SyntaxHighlighter 使用
+const MermaidDiagram: FC<{ code: string; language?: string }> = ({ code }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const renderDiagram = async () => {
-      if (!code || !containerRef.current) return;
+      if (!code) return;
       
       try {
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
@@ -259,26 +264,15 @@ const defaultComponents = memoizeMarkdownComponents({
       {...props}
     />
   ),
-  pre: function Pre({ className, children, ...props }) {
-    // 检查是否是 mermaid 代码块
-    const child = children as React.ReactElement<{ className?: string; children?: string }>;
-    if (child?.props?.className?.includes("language-mermaid")) {
-      const code = child?.props?.children || "";
-      return <MermaidDiagram code={code} />;
-    }
-    
-    return (
-      <pre
-        className={cn(
-          "aui-md-pre overflow-x-auto rounded-t-none! rounded-b-lg bg-black p-4 text-white",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </pre>
-    );
-  },
+  pre: ({ className, ...props }) => (
+    <pre
+      className={cn(
+        "aui-md-pre overflow-x-auto rounded-t-none! rounded-b-lg bg-black p-4 text-white",
+        className,
+      )}
+      {...props}
+    />
+  ),
   code: function Code({ className, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
     return (
