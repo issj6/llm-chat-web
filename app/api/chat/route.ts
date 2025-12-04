@@ -1,4 +1,4 @@
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     // 3. 流式输出
     const result = streamText({
       model,
-      messages,
+      messages: convertToModelMessages(messages),
     });
 
     return result.toUIMessageStreamResponse();
