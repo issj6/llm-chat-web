@@ -62,12 +62,12 @@ export async function POST(req: Request) {
     }
 
     // 3. 流式输出
-    const result = await streamText({
+    const result = streamText({
       model,
       messages,
     });
 
-    return (result as any).toDataStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (error: any) {
     console.error('Chat API Error:', error);
     return new Response(error.message || 'Internal Server Error', { status: 500 });
