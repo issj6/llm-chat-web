@@ -29,6 +29,14 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
  */
 export async function verifyGlobalPassword(password: string): Promise<boolean> {
   const storedPassword = await storage.get<string>('sys:global_password');
+  
+  console.log('--- DEBUG: Global Login Verify ---');
+  console.log('Input:', `"${password}"`);
+  console.log('Stored:', `"${storedPassword}"`);
+  console.log('Type of Stored:', typeof storedPassword);
+  console.log('Match:', password === storedPassword);
+  console.log('----------------------------------');
+
   if (!storedPassword) return false;
   // 全局密码简单比对即可，也可以升级为 hash
   return password === storedPassword;
