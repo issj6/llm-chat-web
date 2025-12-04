@@ -14,10 +14,18 @@ export async function POST(req: Request) {
 
     // 1. 获取模型配置
     const models = await storage.get<ModelConfig[]>('config:models') || [];
+    
+    console.log('--- DEBUG: Chat API (Retry) ---');
+    console.log('Payload modelId:', modelId);
+    console.log('KV Models count:', models.length);
+    console.log('KV Model IDs:', models.map(m => m.id));
+    console.log('Match found:', models.some(m => m.id === modelId));
+    console.log('-------------------------------');
+
     const config = models.find(m => m.id === modelId);
 
     if (!config) {
-      return new Response('Model not found or configured', { status: 400 });
+      return new Response(`Model '${modelId}' not found or configured. Available: ${models.map(m => m.id).join(', ')}`, { status: 400 });
     }
 
     // 2. 初始化 Provider
