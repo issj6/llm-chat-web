@@ -14,12 +14,6 @@ export async function POST(req: Request) {
 
     // 1. 获取模型配置
     const models = await storage.get<ModelConfig[]>('config:models') || [];
-    
-    console.log('--- DEBUG: Chat API ---');
-    console.log('Requested modelId:', modelId);
-    console.log('Available models:', models.map(m => m.id));
-    console.log('---------------------');
-
     const config = models.find(m => m.id === modelId);
 
     if (!config) {

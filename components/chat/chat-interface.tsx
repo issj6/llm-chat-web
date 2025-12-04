@@ -17,6 +17,24 @@ interface PublicModel {
   provider: string;
 }
 
+function ChatRuntimeWrapper({ modelId }: { modelId: string }) {
+  const chat = useChat({
+    // @ts-ignore
+    api: '/api/chat',
+    body: { modelId },
+  });
+
+  const runtime = useAISDKRuntime(chat);
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <Thread 
+        welcomeMessage="你好！我是 AI 助手，有什么我可以帮你的吗？"
+      />
+    </AssistantRuntimeProvider>
+  );
+}
+
 export function ChatInterface() {
   const [models, setModels] = useState<PublicModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
@@ -44,14 +62,6 @@ export function ChatInterface() {
     setSelectedModelId(val);
     localStorage.setItem('last_model_id', val);
   };
-
-  const chat = useChat({
-    // @ts-ignore
-    api: '/api/chat',
-    body: { modelId: selectedModelId },
-  });
-
-  const runtime = useAISDKRuntime(chat);
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center text-muted-foreground">加载配置中...</div>;
@@ -100,11 +110,9 @@ export function ChatInterface() {
         </div>
       </header>
       <div className="flex-1 overflow-hidden relative">
-        <AssistantRuntimeProvider runtime={runtime}>
-          <Thread 
-            welcomeMessage="你好！我是 AI 助手，有什么我可以帮你的吗？"
-          />
-        </AssistantRuntimeProvider>
+        {selectedModelId && (
+          <ChatRuntimeWrapper key={selectedModelId} modelId={selectedModelId} />
+        )}
       </div>
     </div>
   );
