@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import Link from 'next/link';
+import { Button } from "@/components/ui/button";
 
 interface PublicModel {
   id: string;
@@ -78,19 +79,24 @@ export function ChatInterface() {
     <div className="flex flex-col h-screen bg-background">
       <header className="flex items-center justify-between px-4 h-14 border-b bg-muted/20 shrink-0 z-10">
         <div className="font-semibold">AI Chat</div>
-        <div className="w-[200px]">
-          <Select value={selectedModelId} onValueChange={handleModelChange}>
-            <SelectTrigger className="h-8">
-              <SelectValue placeholder="选择模型" />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/login">管理员面板</Link>
+          </Button>
+          <div className="w-[200px]">
+            <Select value={selectedModelId} onValueChange={handleModelChange}>
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="选择模型" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </header>
       <div className="flex-1 overflow-hidden relative">
