@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     await setAuthCookie('admin');
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Login Error:', error);
+    return NextResponse.json({ error: error.message || 'Invalid request' }, { status: 400 });
   }
 }
